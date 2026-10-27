@@ -1,0 +1,75 @@
+*.log
+.DS_Store
+.env
+.env.backup
+.env.production
+.env.windows
+.env.lan
+.phpactor.json
+.phpunit.result.cache
+/.codex
+/.cursor/
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/.playwright-mcp
+/auth.json
+/node_modules
+/public/build
+/public/fonts-manifest.dev.json
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+_ide_helper.php
+Homestead.json
+Homestead.yaml
+Thumbs.db
+
+# Backup directories
+_backup-*/
+_backups_*/
+_qa_backups/
+backup-*/
+backups/
+backup_before_*/
+/scratch/
+
+# SQL dumps and database files
+*.sql
+*.dump
+*.db
+
+# Runtime / launcher
+/Perpustakaan.exe
+/Perpustakaan.exe.*
+*.lnk
+
+# Temporary/debug scripts (root-level)
+/Fix-*.ps1
+/Verify-*.ps1
+/Apply-*.ps1
+/Hide-*.ps1
+/ChangePassword-*.ps1
+/Start-Perpustakaan.ps1
+/Stop-Perpustakaan.bat
+/test-db-native.php
+/task41-*.txt
+/FIX-PENCARIAN-BUKU-PROMPT.txt
+/dynamic-sheets-debug*.log
+frontend/task41-*.txt
+/-w
+
+# Screenshot/image evidence files (root-level)
+/*.png
+
+# Backup variants of config and source files
+*.bak
+*.bak-*
+*.bak_*
+*.broken*
+/compose.lan.yaml.bak*
+/Apply-*.ps1.bak-*

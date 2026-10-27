@@ -1,0 +1,155 @@
+name: library-production
+
+services:
+    backend:
+        image: "${LARAVEL_IMAGE:?Set LARAVEL_IMAGE to the reviewed production image}"
+        environment:
+            APP_ENV: production
+            APP_DEBUG: "false"
+            APP_KEY: "${APP_KEY:?Generate APP_KEY on the deployment host}"
+            APP_URL: "${APP_URL:?Set APP_URL to the public HTTPS URL}"
+            LOG_CHANNEL: "${LOG_CHANNEL:-stderr}"
+            LOG_LEVEL: "${LOG_LEVEL:-warning}"
+            DB_CONNECTION: pgsql
+            DB_HOST: database
+            DB_PORT: 5432
+            DB_DATABASE: "${DB_DATABASE:?Set DB_DATABASE}"
+            DB_USERNAME: "${DB_USERNAME:?Set the least-privilege application DB user}"
+            DB_PASSWORD: "${DB_PASSWORD:?Set a strong application DB password}"
+            SESSION_DRIVER: "${SESSION_DRIVER:-database}"
+            SESSION_LIFETIME: "${SESSION_LIFETIME:-120}"
+            SESSION_ENCRYPT: "${SESSION_ENCRYPT:-true}"
+            SESSION_SECURE_COOKIE: "${SESSION_SECURE_COOKIE:-true}"
+            SESSION_SAME_SITE: "${SESSION_SAME_SITE:-lax}"
+            SESSION_DOMAIN: "${SESSION_DOMAIN:-}"
+            CACHE_STORE: "${CACHE_STORE:-database}"
+            QUEUE_CONNECTION: "${QUEUE_CONNECTION:-database}"
+            FILESYSTEM_DISK: "${FILESYSTEM_DISK:-local}"
+        expose:
+            - "80"
+        volumes:
+            - laravel-storage:/var/www/html/storage/app
+        depends_on:
+            database:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1/up >/dev/null || exit 1"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 30s
+        restart: unless-stopped
+        networks:
+            - app
+
+    frontend:
+        image: "${NUXT_IMAGE:?Set NUXT_IMAGE to the reviewed production image}"
+        environment:
+            NUXT_PUBLIC_API_BASE_URL: "${NUXT_PUBLIC_API_BASE_URL:?Set the public HTTPS API URL}"
+            NITRO_HOST: 0.0.0.0
+            NITRO_PORT: 3000
+        expose:
+            - "3000"
+        healthcheck:
+            test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 30s
+        restart: unless-stopped
+        networks:
+            - app
+
+    database:
+        image: postgres:18-alpine
+        environment:
+            POSTGRES_DB: "${DB_DATABASE:?Set DB_DATABASE}"
+            POSTGRES_USER: "${POSTGRES_ADMIN_USER:?Set POSTGRES_ADMIN_USER}"
+            POSTGRES_PASSWORD: "${POSTGRES_ADMIN_PASSWORD:?Set a strong PostgreSQL admin password}"
+            APP_DB_USERNAME: "${DB_USERNAME:?Set the least-privilege application DB user}"
+            APP_DB_PASSWORD: "${DB_PASSWORD:?Set a strong application DB password}"
+        volumes:
+            - postgres-data:/var/lib/postgresql
+            - ./database/production/init-app-user.sql:/docker-entrypoint-initdb.d/20-app-user.sql:ro
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -q -d \"$${POSTGRES_DB}\" -U \"$${POSTGRES_USER}\""]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        restart: unless-stopped
+        networks:
+            - app
+
+    scheduler:
+        image: "${LARAVEL_IMAGE:?Set LARAVEL_IMAGE to the reviewed production image}"
+        environment:
+            APP_ENV: production
+            APP_DEBUG: "false"
+            APP_KEY: "${APP_KEY:?Generate APP_KEY on the deployment host}"
+            APP_URL: "${APP_URL:?Set APP_URL to the public HTTPS URL}"
+            LOG_CHANNEL: "${LOG_CHANNEL:-stderr}"
+            LOG_LEVEL: "${LOG_LEVEL:-warning}"
+            DB_CONNECTION: pgsql
+            DB_HOST: database
+            DB_PORT: 5432
+            DB_DATABASE: "${DB_DATABASE:?Set DB_DATABASE}"
+            DB_USERNAME: "${DB_USERNAME:?Set the least-privilege application DB user}"
+            DB_PASSWORD: "${DB_PASSWORD:?Set a strong application DB password}"
+            SESSION_DRIVER: "${SESSION_DRIVER:-database}"
+            SESSION_LIFETIME: "${SESSION_LIFETIME:-120}"
+            SESSION_ENCRYPT: "${SESSION_ENCRYPT:-true}"
+            SESSION_SECURE_COOKIE: "${SESSION_SECURE_COOKIE:-true}"
+            SESSION_SAME_SITE: "${SESSION_SAME_SITE:-lax}"
+            SESSION_DOMAIN: "${SESSION_DOMAIN:-}"
+            CACHE_STORE: "${CACHE_STORE:-database}"
+            QUEUE_CONNECTION: "${QUEUE_CONNECTION:-database}"
+            FILESYSTEM_DISK: "${FILESYSTEM_DISK:-local}"
+        command: ["php", "artisan", "schedule:work"]
+        volumes:
+            - laravel-storage:/var/www/html/storage/app
+        depends_on:
+            database:
+                condition: service_healthy
+        restart: unless-stopped
+        container_name: library-production-scheduler
+        networks:
+            - app
+
+    proxy:
+        image: caddy:2-alpine
+        environment:
+            PUBLIC_HOST: "${PUBLIC_HOST:?Set PUBLIC_HOST to the chosen LAN DNS name}"
+        ports:
+            - "${HTTPS_BIND_IP:?Set HTTPS_BIND_IP to the server LAN IPv4}:${HTTPS_PORT:-443}:443"
+        secrets:
+            - tls_cert
+            - tls_key
+        volumes:
+            - ./Caddyfile.production:/etc/caddy/Caddyfile:ro
+            - caddy-data:/data
+            - caddy-config:/config
+        depends_on:
+            backend:
+                condition: service_healthy
+            frontend:
+                condition: service_healthy
+        restart: unless-stopped
+        networks:
+            - app
+
+networks:
+    app:
+        driver: bridge
+
+volumes:
+    postgres-data:
+    laravel-storage:
+    caddy-data:
+    caddy-config:
+
+secrets:
+    tls_cert:
+        file: "${TLS_CERT_FILE:?Set TLS_CERT_FILE to the trusted certificate chain path}"
+    tls_key:
+        file: "${TLS_KEY_FILE:?Set TLS_KEY_FILE to the private key path}"

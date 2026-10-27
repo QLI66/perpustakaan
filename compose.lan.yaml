@@ -1,0 +1,169 @@
+﻿name: library-lan
+
+services:
+    proxy:
+        image: 'caddy:2-alpine'
+        restart: unless-stopped
+        ports:
+            - "${HTTP_BIND_IP:-0.0.0.0}:${HTTP_PORT:-80}:80"
+            - "${HTTP_BIND_IP:-0.0.0.0}:3000:3000"
+        volumes:
+            - './Caddyfile.lan:/etc/caddy/Caddyfile:ro'
+            - 'caddy-data:/data'
+            - 'caddy-config:/config'
+        depends_on:
+            backend:
+                condition: service_healthy
+            frontend:
+                condition: service_healthy
+        networks:
+            - lan
+
+    backend:
+        image: 'sail-8.5/app'
+        restart: unless-stopped
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        environment:
+            APP_NAME: "${APP_NAME:-Sistem Informasi Perpustakaan}"
+            APP_ENV: production
+            APP_DEBUG: "${APP_DEBUG:-false}"
+            APP_KEY: "${APP_KEY:?Set APP_KEY}"
+            APP_URL: "${APP_URL:-http://localhost}"
+            LOG_CHANNEL: "${LOG_CHANNEL:-daily}"
+            LOG_LEVEL: "${LOG_LEVEL:-warning}"
+            DB_CONNECTION: pgsql
+            DB_HOST: "${NATIVE_DB_HOST:-host.docker.internal}"
+            DB_PORT: "${NATIVE_DB_PORT:-5434}"
+            DB_DATABASE: "${NATIVE_DB_DATABASE:-laravel}"
+            DB_USERNAME: "${NATIVE_DB_USERNAME:-sail}"
+            DB_PASSWORD: "${NATIVE_DB_PASSWORD:?Set NATIVE_DB_PASSWORD}"
+            SESSION_DRIVER: "${SESSION_DRIVER:-database}"
+            SESSION_LIFETIME: "${SESSION_LIFETIME:-120}"
+            SESSION_ENCRYPT: "${SESSION_ENCRYPT:-true}"
+            SESSION_SECURE_COOKIE: "false"
+            SESSION_SAME_SITE: "lax"
+            CACHE_STORE: "${CACHE_STORE:-database}"
+            QUEUE_CONNECTION: "${QUEUE_CONNECTION:-database}"
+            FILESYSTEM_DISK: "${FILESYSTEM_DISK:-local}"
+            WWWUSER: "${WWWUSER:-1000}"
+            LARAVEL_SAIL: 1
+            SUPERVISOR_PHP_COMMAND: "php artisan serve --host=0.0.0.0 --port=80 --no-reload"
+        expose:
+            - "80"
+        volumes:
+            - '.:/var/www/html'
+        healthcheck:
+            test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1/up >/dev/null || exit 1"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 15s
+        networks:
+            lan:
+                aliases:
+                    - backend
+                    - laravel.test
+
+    frontend:
+        image: 'sail-8.5/app'
+        command: ['node', '/var/www/html/frontend/.output/server/index.mjs']
+        restart: unless-stopped
+        environment:
+            PORT: 3000
+            NODE_ENV: production
+            NUXT_PUBLIC_API_BASE_URL: "${NUXT_PUBLIC_API_BASE_URL:-http://localhost/api}"
+            WWWUSER: "${WWWUSER:-1000}"
+            LARAVEL_SAIL: 1
+        expose:
+            - "3000"
+        volumes:
+            - '.:/var/www/html'
+        depends_on:
+            backend:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD-SHELL", "curl --fail --silent http://127.0.0.1:3000 >/dev/null || exit 1"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 15s
+        networks:
+            lan:
+                aliases:
+                    - frontend
+                    - nuxt
+
+    scheduler:
+        image: 'sail-8.5/app'
+        command: ['php', 'artisan', 'schedule:work']
+        restart: unless-stopped
+        environment:
+            APP_NAME: "${APP_NAME:-Sistem Informasi Perpustakaan}"
+            APP_ENV: production
+            APP_DEBUG: 'false'
+            APP_KEY: "${APP_KEY:?Set APP_KEY}"
+            APP_URL: "${APP_URL:-http://localhost}"
+            LOG_CHANNEL: "${LOG_CHANNEL:-daily}"
+            LOG_LEVEL: "${LOG_LEVEL:-warning}"
+            DB_CONNECTION: pgsql
+            DB_HOST: "${NATIVE_DB_HOST:-host.docker.internal}"
+            DB_PORT: "${NATIVE_DB_PORT:-5434}"
+            DB_DATABASE: "${NATIVE_DB_DATABASE:-laravel}"
+            DB_USERNAME: "${NATIVE_DB_USERNAME:-sail}"
+            DB_PASSWORD: "${NATIVE_DB_PASSWORD:?Set NATIVE_DB_PASSWORD}"
+            SESSION_DRIVER: "${SESSION_DRIVER:-database}"
+            SESSION_LIFETIME: "${SESSION_LIFETIME:-120}"
+            SESSION_ENCRYPT: "${SESSION_ENCRYPT:-true}"
+            SESSION_SECURE_COOKIE: "false"
+            SESSION_SAME_SITE: "lax"
+            CACHE_STORE: "${CACHE_STORE:-database}"
+            QUEUE_CONNECTION: "${QUEUE_CONNECTION:-database}"
+            FILESYSTEM_DISK: "${FILESYSTEM_DISK:-local}"
+            WWWUSER: "${WWWUSER:-1000}"
+            LARAVEL_SAIL: 1
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - lan
+
+    database:
+        image: 'postgres:18-alpine'
+        ports:
+            - '127.0.0.1:5433:5432'
+        restart: unless-stopped
+        environment:
+            PGPASSWORD: "${DB_PASSWORD:-secret}"
+            POSTGRES_DB: "${DB_DATABASE:-laravel}"
+            POSTGRES_USER: "${DB_USERNAME:-sail}"
+            POSTGRES_PASSWORD: "${DB_PASSWORD:-secret}"
+        volumes:
+            - 'database-data:/var/lib/postgresql'
+        healthcheck:
+            test:
+                - CMD
+                - pg_isready
+                - '-q'
+                - '-d'
+                - "${DB_DATABASE:-laravel}"
+                - '-U'
+                - "${DB_USERNAME:-sail}"
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        networks:
+            lan:
+                aliases:
+                    - database
+                    - pgsql
+
+networks:
+    lan:
+        driver: bridge
+
+volumes:
+    database-data:
+        name: library-system_sail-pgsql
+        external: true
+    caddy-data:
+    caddy-config:

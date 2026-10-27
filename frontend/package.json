@@ -1,0 +1,40 @@
+{
+  "name": "frontend",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.3.1",
+    "@fortawesome/free-solid-svg-icons": "^7.3.1",
+    "@fortawesome/vue-fontawesome": "^3.3.3",
+    "@nuxt/eslint": "^1.17.0",
+    "@primeuix/themes": "^1.2.5",
+    "@types/jsbarcode": "^3.11.4",
+    "dayjs": "^1.11.23",
+    "eslint": "^10.11.0",
+    "html5-qrcode": "^2.3.8",
+    "jsbarcode": "^3.12.3",
+    "jspdf": "^4.2.1",
+    "nuxt": "^4.5.2",
+    "pinia": "^4.0.3",
+    "primevue": "^4.5.5",
+    "vue": "^3.5.43",
+    "vue-router": "^5.3.1",
+    "xlsx": "^0.18.5",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@pinia/nuxt": "^1.0.2",
+    "@primevue/nuxt-module": "^4.5.5",
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.11"
+  }
+}

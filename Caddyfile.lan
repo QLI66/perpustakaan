@@ -1,0 +1,18 @@
+:80, :3000 {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    # API endpoints handled by Laravel backend
+    handle /api/* {
+        reverse_proxy backend:80
+    }
+
+    # SSR and frontend client handled by Nuxt
+    handle {
+        reverse_proxy frontend:3000
+    }
+}
