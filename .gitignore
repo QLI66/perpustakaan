@@ -67,7 +67,7 @@ frontend/task41-*.txt
 /*.png
 
 # Backup variants of config and source files
-*.bak
+*.bak*
 *.bak-*
 *.bak_*
 *.broken*
